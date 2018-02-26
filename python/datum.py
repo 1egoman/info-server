@@ -1,27 +1,36 @@
 MAX_DEPTH = 10
 
-def ingest(data, maxdepth=MAX_DEPTH, depth=0, datumType=None, prev=None):
+def ingest(data, depth=0, datumType=None):
     datumType = type(data)
 
+    # Figure out how to ingest the data
     node = None
     if datumType is str:
-        node = TextDatum(data, depth=depth, maxdepth=maxdepth, prev=prev)
+        node = TextDatum(data, depth=depth, maxdepth=MAX_DEPTH)
     elif datumType is int:
-        node = NumberDatum(data, depth=depth, maxdepth=maxdepth, prev=prev)
+        node = NumberDatum(data, depth=depth, maxdepth=MAX_DEPTH)
     else:
         raise Exception("Dont know which datum type to make!")
 
-    if prev:
-        prev.next = node
-
+    # Derive other properties of the node. Add them to the pipeline before the current node.
     node.calculate()
+
+    # Link node to right side of Datum.current_datum
+    node.prev = Datum.current_datum
+    if Datum.current_datum:
+        Datum.current_datum.next = node
+    Datum.current_datum = node
+
+
     return node
 
 
 class Datum(object):
-    def __init__(self, seed_data, depth=0, maxdepth=None, prev=None):
+    current_datum = None
+
+    def __init__(self, seed_data, depth=0, maxdepth=None):
         self.next = None
-        self.prev = prev
+        self.prev = None
         self.data = {"input": self.preprocess_data(seed_data)}
 
         self.depth = depth
@@ -37,9 +46,14 @@ class Datum(object):
                 value = getattr(self, i)()
                 self.data[i[len("calculate_"):]] = value
 
-                # Add a new Datum
-                if self.maxdepth and self.depth + 1 < self.maxdepth:
-                    ingest(value, maxdepth=self.maxdepth, depth=self.depth+1, prev=self)
+                # Add a new Datum, ensuring that we only recurse so deep and that duplicates should
+                # be avoided.
+                if (
+                    self.maxdepth and self.depth + 1 < self.maxdepth
+                ) and (
+                    self.data["input"] != value
+                ):
+                    ingest(value, depth=self.depth+1)
 
     def __repr__(self):
         return "{}<{}>".format(self.__class__.__name__, self.data)
@@ -78,9 +92,14 @@ class NumberDatum(Datum):
         return power_of_ten
 
 
-d = ingest("blablablaaegagankgjnao;glane;eogze")
+ingest("a")
+ingest("b")
+ingest("c")
 
-node = d
+ingest("a")
+ingest("b")
+
+node = Datum.current_datum
 while node:
     print node
-    node = node.next
+    node = node.prev

@@ -56,7 +56,7 @@ class Datum(object):
                     ingest(value, depth=self.depth+1)
 
     def __repr__(self):
-        return "{}<{}>".format(self.__class__.__name__, self.data)
+        return "{}{}".format(self.__class__.__name__, self.data)
 
 
 
@@ -92,14 +92,156 @@ class NumberDatum(Datum):
         return power_of_ten
 
 
-ingest("a")
-ingest("b")
-ingest("c")
+"""
+1. Find the last `n` nodes with the same type / value as the passed node
+"""
+def pattern(node, verbose=False):
+    # Step 1: Find the last `n` nodes with the same type / value as the passed node
+    number_of_past_nodes_to_find = 5
+    past_nodes = []
+
+    pointer = node.prev # start at the node after the current node
+    while pointer:
+        if type(pointer) == type(node) and pointer.data["input"] == node.data["input"]:
+            past_nodes.append(pointer)
+            if len(past_nodes) >= number_of_past_nodes_to_find:
+                break
+
+        pointer = pointer.prev
+
+    # Step 2: Calculate a fingerprint for the pattern. This is done by roughly "averageing" all
+    # values after each node.
+    point = []
+    weights = []
+    for ct, pointer in enumerate(past_nodes):
+        if verbose:
+            print
+            print "--START--"
+
+        # Loop through all nodes in between the node indicated by `pointer` and the next value of
+        # `pointer`
+        index = 0
+        while pointer and pointer.prev not in past_nodes:
+            if verbose: print pointer
+
+            # Has a value this far back from the original `pointer` value been created before? This
+            # case is run on the first loop iteration.
+            if index > len(point)-1:
+                if verbose: print "  ADD TO END", pointer.data["input"]
+                # Add the new point and its weight to the end.
+                point.append(pointer.data["input"])
+                weights.append(1)
+            else:
+                if verbose: print "  SOMETHING ELSE"
+                old_index = index
+                while index <= len(point)-1:
+                    # On the second loop (outer) iteration, did the node after the `pointer` match?
+                    if point[index] == pointer.data["input"]:
+                        if index <= len(point)-1:
+                            # Increment the weight at that node (multiple nodes have it in common)
+                            # so that `pointer` effectively votes for this node.
+                            weights[index] += 1
+                            if verbose: print "  INCREMENT AT", index
+                        else:
+                            point.insert(index, pointer.data["input"])
+                            weights.insert(index, 1)
+                            if verbose: print "  ADD NEW AFTER", index
+                        break
+
+                    index += 1
+
+            index += 1
+            pointer = pointer.prev
+
+        if verbose:
+            print "--END--"
+            print
+
+    # Step 3: Finally, average every weight in `weights` so it's within 0 <= n <= 1
+    max_weight = float(max(weights))
+    weights = [w / max_weight for w in weights]
+
+    return zip(point, weights)
+
+
+
+def levenshtein(s1, s2):
+    if len(s1) < len(s2):
+        return levenshtein(s2, s1)
+
+    # len(s1) >= len(s2)
+    if len(s2) == 0:
+        return len(s1)
+
+    previous_row = range(len(s2) + 1)
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            insertions = previous_row[j + 1] + 1 # j+1 instead of j since previous_row and current_row are one character longer
+            deletions = current_row[j] + 1       # than s2
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+    
+    return previous_row[-1]
+
+def node_similarity(a, b):
+    if type(a) != type(b):
+        return 0
+    elif a.data["input"] == b.data["input"]:
+        return 1
+    elif type(a) == TextDatum:
+        theoretical_max_difference = len(a.data["input"]) + len(b.data["input"])
+        distance = levenshtein(a.data["input"], b.data["input"]) * 1.0
+
+        # The closer `distance` is to `theoretical_max_difference`, the closer this value is to 1
+        return (theoretical_max_difference - distance) / theoretical_max_difference
+    elif type(a) == NumberDatum:
+        value_a = a.data["input"]
+        value_b = b.data["input"]
+
+        value_a_threshold = value_a * 0.2 # 20% on either side.
+
+        if value_b > (value_a + value_a_threshold) or value_b < (value_a - value_a_threshold):
+            # Outside of threshold. Not a match.
+            return 0
+        else:
+            return 1
+
+
+
+
+
 
 ingest("a")
 ingest("b")
+
+ingest("c")
+ingest("bla")
+ingest("a")
+ingest("b")
+
+ingest("bla")
+ingest("z")
+ingest("a")
+ingest("b")
+
+ingest("c")
+ingest("a")
+ingest("b")
+
+print
+print
 
 node = Datum.current_datum
 while node:
     print node
     node = node.prev
+
+print
+print
+
+print "PATTERN"
+print pattern(Datum.current_datum)
+
+# print node_similarity(TextDatum("abcd"), TextDatum("abd"))

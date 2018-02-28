@@ -3,6 +3,8 @@ import numpy as np;
 
 MAX_DEPTH = 10
 
+SOURCE_FRAMES = {}
+
 def ingest(data, depth=0, datumType=None):
     datumType = type(data)
 
@@ -16,6 +18,12 @@ def ingest(data, depth=0, datumType=None):
     elif datumType is int or datumType is float:
         node = NumberDatum(data, depth=depth, maxdepth=MAX_DEPTH)
 
+    # (ndarray, "source", frame_number)
+    elif datumType is FrameDatum:
+        img, source, frame_number = data
+        node = FrameDatum(img, source, frame_number, SOURCE_FRAMES.get(source), depth=depth, maxdepth=MAX_DEPTH)
+        SOURCE_FRAMES[source] = node
+
     # ((1, 1), (2, 2))
     elif datumType is tuple and len(data) in [2, 3] and type(data[0]) is tuple:
         node = PointDatum(data, depth=depth, maxdepth=MAX_DEPTH)
@@ -26,6 +34,7 @@ def ingest(data, depth=0, datumType=None):
 
     elif datumType is np.ndarray and len(data.shape) == 3:
         node = ImageDatum(data, depth=depth, maxdepth=MAX_DEPTH)
+
     else:
         raise Exception("Dont know which datum type to make!")
 
@@ -158,6 +167,7 @@ class PointDatum(Datum):
         else:
             return None
 
+
 class BoundingBoxDatum(Datum):
     def calculate_upper_left(self):
         return self.data["input"][0]
@@ -168,6 +178,7 @@ class BoundingBoxDatum(Datum):
         return self.data["input"][1][0] - self.data["input"][0][0]
     def calculate_height(self):
         return self.data["input"][1][1] - self.data["input"][0][1]
+
 
 class ImageDatum(Datum):
     def calculate_blobs(self):
@@ -192,6 +203,40 @@ class ImageDatum(Datum):
         gray = cv2.cvtColor(self.data["input"], cv2.COLOR_BGR2GRAY)
         faces = self.__class__.face_cascade.detectMultiScale(gray, 1.3, 5)
         return [(x,y,x+w,y+h) for (x,y,w,h) in faces]
+
+class FrameDatum(ImageDatum):
+    def __init__(self, seed_data, source, frame_number, last_frame, **kwargs):
+        super(ImageDatum, self).__init__(seed_data, **kwargs)
+
+        self.source = source
+        self.data["frame_number"] = frame_number
+        self.last_frame = last_frame
+
+    def calculate(self):
+        for i in dir(self):
+            if i.startswith("calculate_"):
+                # Set the attribute on the Datum
+                value = getattr(self, i)()
+                if value is None: continue
+                key = i[len("calculate_"):]
+                self.data[key] = value
+
+                # Add a new Datum, ensuring that we only recurse so deep and that duplicates should
+                # be avoided.
+                if (
+                    self.maxdepth and self.depth + 1 < self.maxdepth
+                ) and (
+                    type(self.data["input"]) is np.ndarray or self.data["input"] != value
+                ):
+                    if type(value) is list:
+                        # Ingest an array of values one at a time
+                        for ct, v in enumerate(value):
+                            ingest(v, depth=self.depth+1)
+                            ingest(last_frame.data[key][ct] - v, depth=self.depth+1)
+                    else:
+                        # Ingest a single value
+                        ingest(value, depth=self.depth+1)
+                        ingest(last_frame.data[key] - value, depth=self.depth+1)
 
 """
 1. Find the last `n` nodes with the same type / value as the passed node
@@ -349,9 +394,10 @@ def matches_pattern(node, pattern):
 # ingest("b")
 #
 # ingest("c")
+ingest(cv2.imread('./images/1-modified.png'))
+ingest(cv2.imread('./images/2-modified.png'))
 # ingest("a")
 # ingest("b")
-ingest(cv2.imread('./images/1-modified.png'))
 
 print()
 print()
@@ -367,7 +413,7 @@ print()
 # print( "PATTERN")
 # pattern = pattern(Datum.current_datum)
 # print( pattern)
-
+#
 # print()
 # print( "MATCHES PATTERN")
 # print( matches_pattern(Datum.current_datum, pattern))

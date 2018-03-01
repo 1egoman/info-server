@@ -39,7 +39,7 @@ def ingest(data, depth=0, datumType=None):
         raise Exception("Dont know which datum type to make!")
 
     # Derive other properties of the node. Add them to the pipeline before the current node.
-    node.calculate()
+    # node.calculate()
 
     # Link node to right side of Datum.current_datum
     node.prev = Datum.current_datum
@@ -394,21 +394,21 @@ def matches_pattern(node, pattern):
 # ingest("b")
 #
 # ingest("c")
-ingest(cv2.imread('./images/1-modified.png'))
-ingest(cv2.imread('./images/2-modified.png'))
+# ingest(cv2.imread('./images/1-modified.png'))
+# ingest(cv2.imread('./images/2-modified.png'))
 # ingest("a")
 # ingest("b")
 
-print()
-print()
-
-node = Datum.current_datum
-while node:
-    print(node)
-    node = node.prev
-
-print()
-print()
+# print()
+# print()
+#
+# node = Datum.current_datum
+# while node:
+#     print(node)
+#     node = node.prev
+#
+# print()
+# print()
 
 # print( "PATTERN")
 # pattern = pattern(Datum.current_datum)
@@ -419,3 +419,98 @@ print()
 # print( matches_pattern(Datum.current_datum, pattern))
 
 # print( node_similarity(TextDatum("abcd"), TextDatum("abd")))
+
+
+
+
+# From the sequence:
+# NumberDatum(1)
+# TextDatum("Small")
+# NumberDatum(2)
+# TextDatum("Small")
+# NumberDatum(2)
+# NumberDatum("Large")
+# NumberDatum(3)
+# NumberDatum("Large")
+
+# Produce this model:
+model = [
+    # # Says that 1 or 2 preceeds "Small"
+    # ([[NumberDatum(1)], [NumberDatum(2)]], TextDatum("Small")),
+    # ([[NumberDatum(2)], [NumberDatum(3)]], TextDatum("Large")),
+    #
+    # # Says that (2 then 2) or 3 preceeds "Large"
+    # ([[NumberDatum(2), NumberDatum(2)], [NumberDatum(3)]], TextDatum("Something Else")),
+
+    ([[TextDatum('a'), TextDatum('d'), TextDatum('c'), TextDatum('b')]], TextDatum('b')),
+    ([[TextDatum('b'), TextDatum('a'), TextDatum('d'), TextDatum('c')]], TextDatum('c')),
+    ([[TextDatum('c'), TextDatum('b'), TextDatum('a'), TextDatum('d')]], TextDatum('d')),
+    ([[TextDatum('d'), TextDatum('c'), TextDatum('b'), TextDatum('a')]], TextDatum('a')),
+]
+
+class DoneException(Exception): pass
+
+def add_to_model(node):
+    patterns = []
+
+    for i in range(0, 4):
+        1
+
+    model.append((patterns, node))
+
+ingest("a")
+ingest("b")
+ingest("c")
+ingest("d")
+
+ingest("a")
+add_to_model(Datum.current_datum)
+ingest("b")
+ingest("c")
+ingest("d")
+
+ingest("a")
+ingest("b")
+
+# Write a function that takes [NumberDatum(1), NumberDatum(2)] and determines if NumberDatum(2.5) is
+# similar to all nodes in the set.
+
+def predict_next(last):
+    result = []
+    all_totals = 0
+
+    # Loop through each classification in the model
+    for row in model:
+        total = 0
+        # Loop through each possibility within the classification
+        for items in row[0]:
+            # If items is [NumberDatum(1)] for example, then:
+            #     total += node_similarity(items[0], last) * (10/10)
+            # If items is [NumberDatum(1), NumberDatum(2)] for example, then:
+            #     total += node_similarity(items[0], last) * (10/10) + node_similarity(items[1], last.prev) * (9/10)
+            # If items is [NumberDatum(1), NumberDatum(2), NumberDatum(3)] for example, then:
+            #     total += node_similarity(items[0], last) * (10/10) + node_similarity(items[1], last.prev) * (9/10) + node_similarity(items[2], last.prev.prev) * (8/10)
+            # and so on...
+
+            node = last
+            for ct, item in enumerate(items):
+                history_weight = (10 - ct) / 10
+                total += node_similarity(item, node) * history_weight
+                node = node.prev
+
+        all_totals += total
+        result.append((row[1], total))
+
+    if all_totals > 0:
+        return [(label, total / all_totals) for (label, total) in result]
+    else:
+        return result
+
+# a = NumberDatum(2)
+# b = NumberDatum(2)
+# a.prev = b
+#
+print(predict_next(Datum.current_datum))
+print()
+for line in model:
+    print(line)

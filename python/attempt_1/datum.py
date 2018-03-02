@@ -238,81 +238,6 @@ class FrameDatum(ImageDatum):
                         ingest(value, depth=self.depth+1)
                         ingest(last_frame.data[key] - value, depth=self.depth+1)
 
-"""
-1. Find the last `n` nodes with the same type / value as the passed node
-"""
-def pattern(node, verbose=False):
-    # Step 1: Find the last `n` nodes with the same type / value as the passed node
-    number_of_past_nodes_to_find = 5
-    past_nodes = []
-
-    pointer = node.prev # start at the node after the current node
-    while pointer:
-        if type(pointer) == type(node) and pointer.data["input"] == node.data["input"]:
-            past_nodes.append(pointer)
-            if len(past_nodes) >= number_of_past_nodes_to_find:
-                break
-
-        pointer = pointer.prev
-
-    # Step 2: Calculate a fingerprint for the pattern. This is done by roughly "averageing" all
-    # values after each node.
-    point = []
-    weights = []
-    for ct, pointer in enumerate(past_nodes):
-        if verbose:
-            print()
-            print( "--START--")
-
-        # Loop through all nodes in between the node indicated by `pointer` and the next value of
-        # `pointer`
-        index = 0
-        while pointer and pointer.prev not in past_nodes:
-            if verbose: print( pointer)
-
-            # Has a value this far back from the original `pointer` value been created before? This
-            # case is run on the first loop iteration.
-            if index > len(point)-1:
-                if verbose: print( "  ADD TO END", pointer.data["input"])
-                # Add the new point and its weight to the end.
-                point.append(pointer)
-                weights.append(1)
-            else:
-                if verbose: print( "  SOMETHING ELSE")
-                old_index = index
-                while index <= len(point)-1:
-                    # On the second loop (outer) iteration, did the node after the `pointer` match?
-                    if point[index].data["input"] == pointer.data["input"]:
-                        if index <= len(point)-1:
-                            # Increment the weight at that node (multiple nodes have it in common)
-                            # so that `pointer` effectively votes for this node.
-                            weights[index] += 1
-                            if verbose: print( "  INCREMENT AT", index)
-                        else:
-                            point.insert(index, pointer)
-                            weights.insert(index, 1)
-                            if verbose: print( "  ADD NEW AFTER", index)
-                        break
-
-                    index += 1
-
-            index += 1
-            pointer = pointer.prev
-
-        if verbose:
-            print( "--END--")
-            print()
-
-    # Step 3: Finally, average every weight in `weights` so it's within 0 <= n <= 1
-    if len(weights) > 0:
-        max_weight = float(max(weights))
-        weights = [w / max_weight for w in weights]
-
-        return list(zip(point, weights))
-    else:
-        return []
-
-
 
 def levenshtein(s1, s2):
     if len(s1) < len(s2):
@@ -357,24 +282,6 @@ def node_similarity(a, b):
         else:
             return 1
 
-
-def matches_pattern(node, pattern):
-    total_score = 0
-    max_possible_score = 0
-
-    index = 0
-    pointer = node.prev # start at the node after the current node
-    while pointer and index < len(pattern):
-        total_score += node_similarity(pattern[index][0], pointer) * pattern[index][1]
-        max_possible_score += 1
-        for i in range(index, len(pattern)):
-            total_score += node_similarity(pattern[i][0], pointer) * pattern[i][1]
-            max_possible_score += 1
-
-        pointer = pointer.prev
-        index += 1
-
-    return total_score / max_possible_score
 
 
 
@@ -423,54 +330,43 @@ def matches_pattern(node, pattern):
 
 
 
-# From the sequence:
-# NumberDatum(1)
-# TextDatum("Small")
-# NumberDatum(2)
-# TextDatum("Small")
-# NumberDatum(2)
-# NumberDatum("Large")
-# NumberDatum(3)
-# NumberDatum("Large")
 
-# Produce this model:
 model = [
-    # # Says that 1 or 2 preceeds "Small"
-    # ([[NumberDatum(1)], [NumberDatum(2)]], TextDatum("Small")),
-    # ([[NumberDatum(2)], [NumberDatum(3)]], TextDatum("Large")),
-    #
-    # # Says that (2 then 2) or 3 preceeds "Large"
-    # ([[NumberDatum(2), NumberDatum(2)], [NumberDatum(3)]], TextDatum("Something Else")),
-
-    ([[TextDatum('a'), TextDatum('d'), TextDatum('c'), TextDatum('b')]], TextDatum('b')),
-    ([[TextDatum('b'), TextDatum('a'), TextDatum('d'), TextDatum('c')]], TextDatum('c')),
-    ([[TextDatum('c'), TextDatum('b'), TextDatum('a'), TextDatum('d')]], TextDatum('d')),
-    ([[TextDatum('d'), TextDatum('c'), TextDatum('b'), TextDatum('a')]], TextDatum('a')),
+    # What I want:
+    # ([[TextDatum('a'), TextDatum('d'), TextDatum('c'), TextDatum('b')]], TextDatum('b')),
+    # ([[TextDatum('b'), TextDatum('a'), TextDatum('d'), TextDatum('c')]], TextDatum('c')),
+    # ([[TextDatum('c'), TextDatum('b'), TextDatum('a'), TextDatum('d')]], TextDatum('d')),
+    # ([[TextDatum('d'), TextDatum('c'), TextDatum('b'), TextDatum('a')]], TextDatum('a')),
 ]
 
-class DoneException(Exception): pass
-
 def add_to_model(node):
-    patterns = []
+    pattern = []
 
+    pointer = node.prev
     for i in range(0, 4):
-        1
+        pattern.append(pointer)
+        pointer = pointer.prev
 
-    model.append((patterns, node))
+    model.append(([pattern], node))
 
-ingest("a")
-ingest("b")
-ingest("c")
-ingest("d")
+ingest("foo")
+ingest(1)
+ingest("hello")
+ingest(1)
 
-ingest("a")
+ingest("foo")
 add_to_model(Datum.current_datum)
-ingest("b")
-ingest("c")
-ingest("d")
+ingest(1)
+add_to_model(Datum.current_datum)
+ingest("hello")
+add_to_model(Datum.current_datum)
+ingest(1)
+add_to_model(Datum.current_datum)
 
-ingest("a")
-ingest("b")
+ingest("foo")
+add_to_model(Datum.current_datum)
+ingest(1)
+add_to_model(Datum.current_datum)
 
 # Write a function that takes [NumberDatum(1), NumberDatum(2)] and determines if NumberDatum(2.5) is
 # similar to all nodes in the set.
@@ -495,7 +391,7 @@ def predict_next(last):
             node = last
             for ct, item in enumerate(items):
                 history_weight = (10 - ct) / 10
-                total += node_similarity(item, node) * history_weight
+                total += node_similarity(item, node) * history_weight #* (1 / len(items))
                 node = node.prev
 
         all_totals += total

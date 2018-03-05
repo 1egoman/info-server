@@ -14,7 +14,7 @@ class Datum(object):
         return seed_data
 
     def calculate(self):
-        for i in dir(self):
+        for i in sorted(dir(self)):
             if i.startswith("calculate_"):
                 # Set the attribute on the Datum
                 value = getattr(self, i)()

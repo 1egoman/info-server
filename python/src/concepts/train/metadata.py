@@ -6,13 +6,14 @@ from PIL import Image
 from nltk.stem.porter import PorterStemmer
 stemmer = PorterStemmer()
 
-from ...datum import ImageDatum
+from ...datum import Pipeline, ImageDatum
+from ...datum.ingest import ingest
 from ..concept import Concept
+from ..metadata import METADATA
 
 BASE_URL = "https://api.qwant.com/api/search/images?count=10&offset=1&q={}"
 
 def train(phrase):
-    print("PHRASE", phrase)
     concept = Concept.find(phrase)
     if concept is None:
         return None
@@ -43,8 +44,11 @@ def train(phrase):
             # Save, but in a lower quality and compressed
             im.save('/tmp/image.jpeg', 'JPEG', quality=2)
 
-            image_datum = ImageDatum(cv2.imread('/tmp/image.jpeg'))
-            image_datum.calculate()
-            print(image_datum)
+            # Add the image to the pipeline
+            pipeline = Pipeline()
+            image_datum = ingest(cv2.imread('/tmp/image.jpeg'), pipeline=pipeline)
+            pipeline.debug()
 
-        # Image.open('/tmp/image.jpeg').show()
+            # Add the pipeline as metadata
+            concept.add_metadata(METADATA["RELATED_IMAGE"], pipeline)
+            print("  ... Added RELATED_IMAGE for", phrase)

@@ -1,14 +1,43 @@
+import numpy as np
+
+class Pipeline(object):
+    def __init__(self):
+        self.current_datum = None
+
+    def count(self):
+        count = 0
+        pointer = self.current_datum
+
+        while pointer:
+            count += 1
+            pointer = pointer.prev
+
+        return count
+
+    def debug(self):
+        pointer = self.current_datum
+        while pointer:
+            print(pointer)
+            pointer = pointer.prev
 
 class Datum(object):
-    current_datum = None
+    default_pipeline = Pipeline()
 
-    def __init__(self, seed_data, depth=0, maxdepth=None):
+    def __init__(self, seed_data, depth=0, maxdepth=None, pipeline=None):
         self.next = None
         self.prev = None
         self.data = {"input": self.preprocess_data(seed_data)}
 
         self.depth = depth
         self.maxdepth = maxdepth
+
+        if pipeline is not None:
+            self.pipeline = pipeline
+        else:
+            self.pipeline = Datum.default_pipeline
+
+        from .ingest import ingest
+        self.ingest = ingest
 
     def preprocess_data(self, seed_data):
         return seed_data
@@ -31,10 +60,10 @@ class Datum(object):
                     if type(value) is list:
                         # Ingest an array of values one at a time
                         for v in value:
-                            ingest(v, depth=self.depth+1)
+                            self.ingest(v, depth=self.depth+1, pipeline=self.pipeline)
                     else:
                         # Ingest a single value
-                        ingest(value, depth=self.depth+1)
+                        self.ingest(value, depth=self.depth+1, pipeline=self.pipeline)
 
     def __repr__(self):
         return "{}{}".format(self.__class__.__name__, self.data)

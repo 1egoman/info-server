@@ -6,6 +6,9 @@ import pickle
 
 from .relation import Relation
 
+METADATA = {
+    "RELATED_IMAGE": "RELATED_IMAGE",
+}
 
 class Metadata(object):
     def __init__(self, concept, kind, data):
@@ -28,7 +31,7 @@ class Metadata(object):
             )
         else:
             cursor.execute(
-                'INSERT INTO metadata (concept, kind, data) VALUES (?, ?)',
+                'INSERT INTO metadata (concept, kind, data) VALUES (?, ?, ?)',
                 (self.concept.id, self.kind, data)
             )
             self.id = cursor.lastrowid

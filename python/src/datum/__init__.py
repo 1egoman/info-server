@@ -1,4 +1,4 @@
-from .base_datum import Datum
+from .base_datum import Datum, Pipeline
 from .bounding_box_datum import BoundingBoxDatum
 from .frame_datum import FrameDatum
 from .image_datum import ImageDatum

@@ -1,4 +1,4 @@
-from ingest import ingest
+from datum.ingest import ingest
 from datum import Datum
 
 ingest("A")

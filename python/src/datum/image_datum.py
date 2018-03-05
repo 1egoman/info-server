@@ -4,6 +4,7 @@ from .base_datum import Datum
 
 class ImageDatum(Datum):
     def calculate_blobs(self):
+        print("CALCULATING BLOBS")
         im = self.data["input"]
 
         # Set up the detector with default parameters.

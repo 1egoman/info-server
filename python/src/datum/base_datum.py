@@ -20,6 +20,20 @@ class Pipeline(object):
             print(pointer)
             pointer = pointer.prev
 
+    # A generator for looping through all datums in a pipeline
+    def items(self):
+        pointer = self.current_datum
+        while pointer:
+            yield pointer
+            pointer = pointer.prev
+
+    # Get the neth value in a pipeline. This is relatively slow for a large pipeline, so really only
+    # useful in debugging.
+    def nth(self, n):
+        for index, item in enumerate(self.items()):
+            if index == n:
+                return item
+
 class Datum(object):
     default_pipeline = Pipeline()
 

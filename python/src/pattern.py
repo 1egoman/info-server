@@ -20,33 +20,41 @@ def levenshtein(s1, s2):
     
     return previous_row[-1]
 
+NODE_SIMILARITY_WEIGHTS = {
+    NumberDatum: 0.2,
+    TextDatum: 0.8,
+}
+
 def node_similarity(a, b):
-    if type(a) != type(b):
-        return 0
-    # These pipelines are 1-heavy, so add a specific case that attempts to remove that bias.
-    elif a.data["input"] == 1 and b.data["input"] == 1:
-        return 0.2
-    elif a.data["input"] == b.data["input"]:
-        return 1
-    elif type(a) == TextDatum:
-        theoretical_max_difference = len(a.data["input"]) + len(b.data["input"])
-        distance = levenshtein(a.data["input"], b.data["input"]) * 1.0
-
-        # The closer `distance` is to `theoretical_max_difference`, the closer this value is to 1
-        return (theoretical_max_difference - distance) / theoretical_max_difference
-    elif type(a) == NumberDatum:
-        value_a = a.data["input"]
-        value_b = b.data["input"]
-
-        value_a_threshold = value_a * 0.2 # 20% on either side.
-
-        if value_b > (value_a + value_a_threshold) or value_b < (value_a - value_a_threshold):
-            # Outside of threshold. Not a match.
+    def calculate(a, b):
+        if type(a) != type(b):
             return 0
-        else:
+        # These pipelines are 1-heavy, so add a specific case that attempts to remove that bias.
+        elif a.data["input"] == 1 and b.data["input"] == 1:
+            return 0.2
+        elif a.data["input"] == b.data["input"]:
             return 1
-    else:
-        return 0
+        elif type(a) == TextDatum:
+            theoretical_max_difference = len(a.data["input"]) + len(b.data["input"])
+            distance = levenshtein(a.data["input"], b.data["input"]) * 1.0
+
+            # The closer `distance` is to `theoretical_max_difference`, the closer this value is to 1
+            return (theoretical_max_difference - distance) / theoretical_max_difference
+        elif type(a) == NumberDatum:
+            value_a = a.data["input"]
+            value_b = b.data["input"]
+
+            value_a_threshold = value_a * 0.2 # 20% on either side.
+
+            if value_b > (value_a + value_a_threshold) or value_b < (value_a - value_a_threshold):
+                # Outside of threshold. Not a match.
+                return 0
+            else:
+                return 1
+        else:
+            return 0
+
+    return calculate(a, b) * NODE_SIMILARITY_WEIGHTS.get(type(a), 1) * NODE_SIMILARITY_WEIGHTS.get(type(b), 1)
 
 
 def diff(a, b):
@@ -78,8 +86,6 @@ def diff(a, b):
             ):
                 best_probabilities_for_place[index_a] = (index_b, value)
 
-    print(best_probabilities_for_place)
-
     # Pick the item with the largest value for a given index. TODO
     # [(1, 1.0), (1, 0.9), (3, 1.0), (3, 0.9), (3, 0.8), (4, 0.8), (4, 0.9), (4, 1.0)]
     #    /\                   /\                                                /\
@@ -88,8 +94,13 @@ def diff(a, b):
         if item[1] > matches[index][1]:
             matches[index] = item
 
+    all_data = [(index, match[0], match[1]) for index, match in enumerate(matches) if match[0] != -1]
 
-    return [(index, match[0], match[1]) for index, match in enumerate(matches) if match[0] != -1]
+    # Calculate an average of all weights
+    mean = sum([match[2] for match in all_data]) / len(all_data)
+
+    # Remove any weights below the average
+    return [match for match in all_data if match[2] > mean]
 
 
 def extract_similar_regions(pointer):

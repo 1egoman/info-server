@@ -9,6 +9,8 @@ from .number_datum import NumberDatum
 from .point_datum import PointDatum
 from .text_datum import TextDatum
 
+SOURCE_FRAMES = {}
+
 def ingest(data, depth=0, pipeline=Datum.default_pipeline, datumType=None):
 
     datumType = type(data)

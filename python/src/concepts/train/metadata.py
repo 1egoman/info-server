@@ -37,7 +37,22 @@ def train(phrase):
 
             r = requests.get(image_url, stream=True)
             r.raw.decode_content = True # handle spurious Content-Encoding
-            im = Image.open(r.raw).convert('RGB')
+            im = Image.open(r.raw)
+
+            # If image has transpareny, remove it.
+            if im.mode in ('RGBA', 'LA') or (im.mode == 'P' and 'transparency' in im.info):
+
+                # Need to convert to RGBA if LA format due to a bug in PIL (http://stackoverflow.com/a/1963146)
+                alpha = im.convert('RGBA').split()[-1]
+
+                # Create a new background image of our matt color.
+                # Must be RGBA because paste requires both images have the same format
+                # (http://stackoverflow.com/a/8720632  and  http://stackoverflow.com/a/9459208)
+                bg = Image.new("RGBA", im.size, (255, 255, 255, 255))
+                bg.paste(im, mask=alpha)
+                im = bg
+
+            im = im.convert('RGB')
 
             print("  ... Size:", im.size)
 
@@ -47,7 +62,7 @@ def train(phrase):
             # Add the image to the pipeline
             pipeline = Pipeline()
             image_datum = ingest(cv2.imread('/tmp/image.jpeg'), pipeline=pipeline)
-            pipeline.debug()
+            # pipeline.debug()
 
             # Add the pipeline as metadata
             concept.add_metadata(METADATA["RELATED_IMAGE"], pipeline)

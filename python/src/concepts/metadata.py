@@ -37,4 +37,3 @@ class Metadata(object):
             self.id = cursor.lastrowid
 
         db.commit()
-

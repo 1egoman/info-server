@@ -53,7 +53,8 @@ def diff(a, b):
 
             # Rough similarity metric
             # replace with `value = node_similarity(item_a, item_b)`
-            value = abs(1 - (abs(item_a - item_b) * 0.1)) if abs(item_a - item_b) > 0 else 1.0
+            # value = abs(1 - (abs(item_a - item_b) * 0.1)) if abs(item_a - item_b) > 0 else 1.0
+            value = node_similarity(item_a, item_b)
 
             # If the current comparison of item_a and item_b is greater than the current value for
             # item_a and item_b, and the item is after the last match (ie, to ensure that the order
@@ -76,15 +77,25 @@ def diff(a, b):
 
     return [(index, match[0], match[1]) for index, match in enumerate(matches) if match[0] != -1]
 
+def extract_similar_regions(pointer):
+    head = pointer
+    pointer = pointer.prev
 
-result = diff(
-    # [1, 2,  3, 4,  5],
-    # [2, 10, 4, 14, 8],
+    similar_heads = []
 
-    # [1, 2, 3, 4, 5],
-    # [2, 5, 4, 14, 8],
+    while pointer:
+        if node_similarity(head, pointer) > 0.8:
+            similar_heads.append(pointer)
 
-    [1, 2, 3, 4, 5, 6, 7, 8],
-    [4, 1, 6, 3, 8],
-)
-print(result)
+        pointer = pointer.prev
+
+# result = diff(
+#     # [1, 2,  3, 4,  5],
+#     # [2, 10, 4, 14, 8],
+#
+#     # [1, 2, 3, 4, 5],
+#     # [2, 5, 4, 14, 8],
+#
+#     [1, 2, 3, 4, 5, 6, 7, 8],
+#     [4, 1, 6, 3, 8],
+# )

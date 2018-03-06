@@ -1,5 +1,5 @@
 import numpy as np
-MAX_DEPTH = 10
+MAX_DEPTH = 20
 
 from .base_datum import Datum, Pipeline
 from .bounding_box_datum import BoundingBoxDatum
@@ -39,6 +39,13 @@ def ingest(data, depth=0, pipeline=Datum.default_pipeline, datumType=None):
 
     elif datumType is np.ndarray and len(data.shape) == 3:
         node = ImageDatum(data, depth=depth, maxdepth=MAX_DEPTH, pipeline=pipeline)
+
+    # If the user passes a datum already, then adjust its properties but just use them otherwise.
+    elif issubclass(datumType, Datum):
+        node = data
+        node.depth = depth
+        node.maxdepth = MAX_DEPTH
+        node.pipeline = pipeline
 
     else:
         raise Exception("Dont know which datum type to make!")

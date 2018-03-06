@@ -76,7 +76,7 @@ class Concept(object):
 
             relation = Relation(
                 self,
-                row[2],
+                row[1],
                 *concepts,
             )
             relation.id = row[0]

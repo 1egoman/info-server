@@ -3,7 +3,7 @@ db = sqlite3.connect('./concepts.db')
 cursor = db.cursor()
 
 from .concept import Concept
-from .relation import Relation
+from .relation import Relation, RELATIONS
 
 def migrate():
     print("* Initializing database...")

@@ -57,7 +57,7 @@ def node_similarity(a, b):
     return calculate(a, b) * NODE_SIMILARITY_WEIGHTS.get(type(a), 1) * NODE_SIMILARITY_WEIGHTS.get(type(b), 1)
 
 
-def diff(a, b):
+def identify_similarities(a, b):
     last_match_index = 0
     best_probabilities_for_place = [(-1, 0) for _ in range(0, a.count())]
 

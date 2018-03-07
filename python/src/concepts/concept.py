@@ -3,8 +3,11 @@ db = sqlite3.connect('./concepts.db')
 cursor = db.cursor()
 
 import pickle
-from nltk.stem.porter import PorterStemmer
-stemmer = PorterStemmer()
+
+import spacy
+nlp = spacy.load('en')
+def stemmer(word):
+    return nlp(word)[0].lemma_
 
 from .relation import Relation
 from .metadata import Metadata
@@ -13,7 +16,7 @@ class Concept(object):
     def __init__(self, name, subtype):
         self.id = None
 
-        self.name = stemmer.stem(name)
+        self.name = stemmer(name)
         self.subtype = subtype
 
     def save(self):
@@ -30,6 +33,7 @@ class Concept(object):
             self.id = cursor.lastrowid
 
         db.commit()
+        return self
 
     @staticmethod
     def get(id):
@@ -48,11 +52,18 @@ class Concept(object):
             return None
 
     @staticmethod
-    def find(phrase):
-        cursor.execute(
-            'SELECT id from concepts where name = ? LIMIT 1',
-            (stemmer.stem(phrase),)
-        )
+    def find(phrase, subtype=None):
+        print('FIND', phrase, subtype)
+        if subtype is not None:
+            cursor.execute(
+                'SELECT id from concepts where name = ? AND subtype = ? LIMIT 1',
+                (stemmer(phrase), subtype)
+            )
+        else:
+            cursor.execute(
+                'SELECT id from concepts where name = ? LIMIT 1',
+                (stemmer(phrase),)
+            )
         rows = cursor.fetchall()
         print(rows)
 
@@ -82,6 +93,20 @@ class Concept(object):
             relation.id = row[0]
             relation.saved = True
             output.append(relation)
+
+        return output
+
+    # Recursively return all relationships (to a certain depth) that relate to `self`.
+    def deep_relations(self, depth=3):
+        if depth == 0:
+            return {}
+
+        relations = self.relations()
+
+        output = {}
+        for relation in relations:
+            related = relation.concepts[0].deep_relations(depth-1)
+            output[relation.concepts[0].name] = related
 
         return output
 

@@ -9,6 +9,7 @@ RELATIONS = {
     "IDENTICAL": "IDENTICAL",
     "SUBSET": "SUBSET",
     "SUPERSET": "SUPERSET",
+    "SAME_CONTEXT": "SAME_CONTEXT",
 }
 
 class Relation(object):
@@ -57,3 +58,4 @@ class Relation(object):
             self.id = cursor.lastrowid
 
         db.commit()
+        return self

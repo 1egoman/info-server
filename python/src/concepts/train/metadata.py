@@ -3,8 +3,10 @@ import cv2
 
 from PIL import Image
 
-from nltk.stem.porter import PorterStemmer
-stemmer = PorterStemmer()
+import spacy
+nlp = spacy.load('en')
+def stemmer(word):
+    return nlp(word)[0].lemma_
 
 from ...datum import Pipeline, ImageDatum
 from ...datum.ingest import ingest

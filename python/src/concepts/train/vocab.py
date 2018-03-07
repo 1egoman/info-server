@@ -1,7 +1,11 @@
 import requests
 
-from nltk.stem.porter import PorterStemmer
-stemmer = PorterStemmer()
+import spacy
+nlp = spacy.load('en')
+def stemmer(word):
+    return nlp(word)[0].lemma_
+def pos(word):
+    return nlp(word)[0].pos_
 
 from ..concept import Concept
 from ..relation import Relation, RELATIONS
@@ -10,14 +14,14 @@ WORDNICK_RELATIONHIP_CONVERSION = {
   "synonym": RELATIONS["SYNONYM"],
   "antonym": RELATIONS["ANTONYM"],
   "variant": RELATIONS["IDENTICAL"],
-  # "equivalent"
+  "equivalent": RELATIONS["IDENTICAL"],
   # "related-word"
   # "form"
   "hypernym": RELATIONS["SUBSET"],
   "hyponym": RELATIONS["SUPERSET"],
   # "inflected-form"
   # "primary"
-  # "same-context"
+  "same-context": RELATIONS["SAME_CONTEXT"],
   # "verb-form"
   # "verb-stem"
 }
@@ -52,7 +56,7 @@ parameter defaults to 10, but in actual training runs this should be set much hi
 """
 def train(phrase, depth=MAX_DEPTH, stack=[]):
     # Try to prevent training loops. Ie, foo => bar => baz => foo
-    if stemmer.stem(phrase) in stack:
+    if stemmer(phrase) in stack:
         print('  (recursive training loop detected: {} => {})'.format(stack, phrase))
         return None
 
@@ -64,7 +68,7 @@ def train(phrase, depth=MAX_DEPTH, stack=[]):
 
     base_concept = Concept.find(phrase)
     if base_concept is None:
-        base_concept = Concept(phrase, "")
+        base_concept = Concept(phrase, pos(phrase))
         base_concept.save()
 
         related_concepts = get_related_concepts(phrase)
